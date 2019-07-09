@@ -32,15 +32,46 @@ namespace DiSh
                 return;
             }
 
+            var wp = WINDOWPLACEMENT.Default;
+            Win32.GetWindowPlacement(hwnd, ref wp);
+
+
             if (Win32.ShowWindow(hwnd, 0))
             {
-                // it was visible
                 Win32.ShowWindow(hwnd, 5);
                 Windows.Add(hwnd);
             }
             else
             {
                 HiddenWindows.Add(hwnd);
+            }
+        }
+
+        public void MoveOut()
+        {
+            var allWindows = Windows.Concat(HiddenWindows).ToList();
+            Windows.Clear();
+            HiddenWindows.Clear();
+            foreach (var toHide in allWindows)
+            {
+                if (Win32.ShowWindow(toHide, 0)) // SW_HIDE
+                {
+                    // we have hidden it
+                    Windows.Add(toHide);
+                }
+                else
+                {
+                    // it was already hidden
+                    HiddenWindows.Add(toHide);
+                }
+            }
+        }
+
+        public void MoveTo()
+        {
+            foreach (var toShow in Windows)
+            {
+                Win32.ShowWindow(toShow, 5); // SW_SHOW
             }
         }
 
@@ -66,14 +97,14 @@ namespace DiSh
 
         public void Init()
         {
-            Win32.EnumWindows((hwnd,  param) =>
-            {
-                var (desktops, curDesktop) = GetDesktopsForWindow(hwnd);
+            //Win32.EnumWindows((hwnd,  param) =>
+            //{
+            //    var (desktops, curDesktop) = GetDesktopsForWindow(hwnd);
 
-                desktops[curDesktop].Add(hwnd);
+            //    desktops[curDesktop].Add(hwnd);
 
-                return true;
-            }, 0);
+            //    return true;
+            //}, 0);
 
             _winEventHook = GCHandle.Alloc((Win32.WinEventDelegate) WinMove);
             Win32.SetWinEventHook(Win32.EVENT_OBJECT_LOCATIONCHANGE,
@@ -165,15 +196,8 @@ namespace DiSh
             if (nextDesktop == curDesktop)
                 return;
 
-            foreach (var toHide in desktops[curDesktop].Windows)
-            {
-                Win32.ShowWindow(toHide, 0); // SW_HIDE
-            }
-
-            foreach(var toShow in desktops[nextDesktop].Windows)
-            {
-                Win32.ShowWindow(toShow, 5); // SW_SHOW
-            }
+            desktops[curDesktop].MoveOut();
+            desktops[nextDesktop].MoveTo();
 
             _curDesktop[curmon] = nextDesktop;
         }

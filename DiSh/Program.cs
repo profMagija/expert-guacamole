@@ -3,6 +3,8 @@ using System.Collections.Generic;
 using System.Diagnostics;
 using System.Drawing;
 using System.Linq;
+using System.Runtime.InteropServices;
+using System.Text;
 using System.Threading.Tasks;
 using System.Windows.Forms;
 
@@ -44,15 +46,34 @@ namespace DiSh
 
             //Process.Start("explorer.exe");
 
-            var taskbar = Win32.FindWindowA("Shell_TrayWnd", "");
-            Win32.ShowWindow(taskbar, 0);
+            Win32.EnumDisplayMonitors(IntPtr.Zero, IntPtr.Zero, (IntPtr monitor, IntPtr hdcMonitor, ref RECT lprcMonitor, IntPtr data) =>
+            {
+                var mi = new MONITORINFO();
+                mi.Init();
 
-            var nWidth = Win32.GetSystemMetrics(SystemMetric.SM_CXSCREEN);
-            int nHeight = Win32.GetSystemMetrics(SystemMetric.SM_CYSCREEN);
+                Win32.GetMonitorInfoA(monitor, ref mi);
 
-            var rcWorkArea = new RECT(0, 0, nWidth, nHeight);
+                if (!Win32.SystemParametersInfo(0x2f, 0, ref mi.Monitor, 0)) // 0x27 = SPI_SETWORKAREA
+                {
+                    var le = Marshal.GetLastWin32Error();
+                    Console.WriteLine("COuld not set thing, {0}", le);
+                }
 
-            Win32.SystemParametersInfo(0x002f, 0, ref rcWorkArea, 0);
+                return true;
+            }, IntPtr.Zero);
+
+
+
+            Win32.EnumWindows((hwnd, param) =>
+            {
+                var sb = new StringBuilder(50);
+                Win32.GetClassNameA(hwnd, sb, 50);
+                if (sb.ToString() == "Shell_TrayWnd" || sb.ToString() == "Shell_SecondaryTrayWnd")
+                {
+                    Win32.SetWindowPos(hwnd, new IntPtr(1), 0, 0, 0, 0, new IntPtr(0x10 | 0x400 | 0x80)); // SWP_NOACTIVATE | SWP_NOSENDCHANGING | SWP_HIDEWINDOW
+                }
+                return true;
+            }, 0);
 
             Application.Run();
         }

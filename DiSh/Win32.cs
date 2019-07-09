@@ -197,6 +197,9 @@ namespace DiSh
         public static extern bool ShowWindow(IntPtr hwnd, int cmdShow);
 
         [DllImport("user32.dll")]
+        public static extern bool IsWindowVisible(IntPtr hwnd);
+
+        [DllImport("user32.dll")]
         public static extern bool SetForegroundWindow(IntPtr hWnd);
 
         [DllImport("user32.dll", SetLastError = true)]
@@ -209,12 +212,95 @@ namespace DiSh
         [DllImport("user32.dll", CharSet = CharSet.Ansi)]
         public static extern IntPtr FindWindowA(string cname, string wname);
 
+        [DllImport("user32.dll", CharSet = CharSet.Ansi)]
+        public static extern int GetClassNameA(
+            IntPtr hWnd,
+            StringBuilder lpClassName,
+            int nMaxCount
+        );
+
         [DllImport("user32.dll")]
         public static extern bool GetWindowRect(IntPtr hwnd, out RECT rect);
 
         [DllImport("user32.dll")]
         public static extern int GetSystemMetrics(SystemMetric smIndex);
 
+        [DllImport("user32.dll")]
+        public static extern bool GetMonitorInfoA(IntPtr hMonitor, ref MONITORINFO lpmi);
+
+        [DllImport("user32.dll")]
+        internal static extern bool EnumDisplayMonitors(IntPtr hdc, IntPtr lprcClip, MonitorEnumProc lpfnEnum, IntPtr dwData);
+
+        internal delegate bool MonitorEnumProc(IntPtr hMonitor, IntPtr hdcMonitor, ref RECT lprcMonitor, IntPtr dwData);
+
+        [DllImport("user32.dll", SetLastError = true)]
+        [return: MarshalAs(UnmanagedType.Bool)]
+        internal static extern bool GetWindowPlacement(IntPtr hWnd, ref WINDOWPLACEMENT lpwndpl);
+
+        [DllImport("user32.dll")]
+        public static extern bool DestroyWindow(IntPtr hwnd);
+
+        [DllImport("user32.dll")]
+        public static extern bool SetWindowPos(
+            IntPtr hWnd,
+            IntPtr hWndInsertAfter,
+            int X,
+            int Y,
+            int cx,
+            int cy,
+            IntPtr uFlags
+        );
+    }
+
+    [Serializable]
+    [StructLayout(LayoutKind.Sequential)]
+    internal struct WINDOWPLACEMENT
+    {
+        /// <summary>
+        /// The length of the structure, in bytes. Before calling the GetWindowPlacement or SetWindowPlacement functions, set this member to sizeof(WINDOWPLACEMENT).
+        /// <para>
+        /// GetWindowPlacement and SetWindowPlacement fail if this member is not set correctly.
+        /// </para>
+        /// </summary>
+        public int Length;
+
+        /// <summary>
+        /// Specifies flags that control the position of the minimized window and the method by which the window is restored.
+        /// </summary>
+        public int Flags;
+
+        /// <summary>
+        /// The current show state of the window.
+        /// </summary>
+        public int ShowCmd;
+
+        /// <summary>
+        /// The coordinates of the window's upper-left corner when the window is minimized.
+        /// </summary>
+        public int MinPosition;
+
+        /// <summary>
+        /// The coordinates of the window's upper-left corner when the window is maximized.
+        /// </summary>
+        public int MaxPosition;
+
+        /// <summary>
+        /// The window's coordinates when the window is in the restored position.
+        /// </summary>
+        public RECT NormalPosition;
+
+        /// <summary>
+        /// Gets the default (empty) value.
+        /// </summary>
+        public static WINDOWPLACEMENT Default
+        {
+            get
+            {
+                WINDOWPLACEMENT result = new WINDOWPLACEMENT();
+                result.Length = Marshal.SizeOf(result);
+                return result;
+            }
+        }
     }
 
     public enum SystemMetric
@@ -412,6 +498,50 @@ namespace DiSh
         public override string ToString()
         {
             return string.Format(System.Globalization.CultureInfo.CurrentCulture, "{{Left={0},Top={1},Right={2},Bottom={3}}}", Left, Top, Right, Bottom);
+        }
+    }
+
+
+    /// <summary>
+    /// The MONITORINFOEX structure contains information about a display monitor.
+    /// The GetMonitorInfo function stores information into a MONITORINFOEX structure or a MONITORINFO structure.
+    /// The MONITORINFOEX structure is a superset of the MONITORINFO structure. The MONITORINFOEX structure adds a string member to contain a name
+    /// for the display monitor.
+    /// </summary>
+    [StructLayout(LayoutKind.Sequential, CharSet = CharSet.Auto)]
+    internal struct MONITORINFO
+    {
+        /// <summary>
+        /// The size, in bytes, of the structure. Set this member to sizeof(MONITORINFOEX) (72) before calling the GetMonitorInfo function.
+        /// Doing so lets the function determine the type of structure you are passing to it.
+        /// </summary>
+        public int Size;
+
+        /// <summary>
+        /// A RECT structure that specifies the display monitor rectangle, expressed in virtual-screen coordinates.
+        /// Note that if the monitor is not the primary display monitor, some of the rectangle's coordinates may be negative values.
+        /// </summary>
+        public RECT Monitor;
+
+        /// <summary>
+        /// A RECT structure that specifies the work area rectangle of the display monitor that can be used by applications,
+        /// expressed in virtual-screen coordinates. Windows uses this rectangle to maximize an application on the monitor.
+        /// The rest of the area in rcMonitor contains system windows such as the task bar and side bars.
+        /// Note that if the monitor is not the primary display monitor, some of the rectangle's coordinates may be negative values.
+        /// </summary>
+        public RECT WorkArea;
+
+        /// <summary>
+        /// The attributes of the display monitor.
+        ///
+        /// This member can be the following value:
+        ///   1 : MONITORINFOF_PRIMARY
+        /// </summary>
+        public uint Flags;
+
+        public void Init()
+        {
+            Size = 40;
         }
     }
 }
